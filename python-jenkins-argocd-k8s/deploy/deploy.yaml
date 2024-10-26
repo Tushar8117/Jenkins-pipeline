@@ -16,6 +16,6 @@ spec:
     spec:
       containers:
       - name: todo
-        image: abhishekf5/todo-app:v1
+        image: tushar8117/jenkins-python:v1
         ports:
         - containerPort: 8000
