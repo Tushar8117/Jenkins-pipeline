@@ -63,14 +63,34 @@ pipeline {
   }
   post {
     always {
-      mail bcc: '',
-           body: """SonarQube analysis completed for the project. 
-                    Visit SonarQube Dashboard: ${env.SONAR_URL} for details.""",
-           cc: '',
-           from: 'tushar937297@gmail.com',
-           replyTo: 'tushardeshmukh8117@gmail.com',
-           subject: "SonarQube Report for Build ${env.BUILD_NUMBER}",
-           to: 'tushardeshmukh8117@gmail.com'
+      script {
+        // Define SonarQube Project URL
+        def sonarProjectURL = "${env.SONAR_URL}/dashboard?id=your_project_key" // Replace 'your_project_key' with your SonarQube project key
+
+        // Define the email content with SonarQube report placeholders
+        def emailBody = """<h2>SonarQube Analysis Report for Build ${env.BUILD_NUMBER}</h2>
+                           <p>The SonarQube analysis for project ${env.JOB_NAME} has been completed. Key metrics:</p>
+                           <ul>
+                               <li><b>Build Number:</b> ${env.BUILD_NUMBER}</li>
+                               <li><b>Quality Gate Status:</b> <b><font color="green">Passed</font></b> or <b><font color="red">Failed</font></b> (Placeholder)</li>
+                               <li><b>Code Coverage:</b> Placeholder %</li>
+                               <li><b>Code Smells:</b> Placeholder count</li>
+                               <li><b>Bugs:</b> Placeholder count</li>
+                               <li><b>Vulnerabilities:</b> Placeholder count</li>
+                           </ul>
+                           <p>For more details, view the <a href="${sonarProjectURL}">full SonarQube report</a>.</p>"""
+
+        // Send the email with SonarQube report
+        mail bcc: '',
+             body: emailBody,
+             mimeType: 'text/html',
+             cc: '',
+             from: 'tushar937297@gmail.com',
+             replyTo: 'tushardeshmukh8117@gmail.com',
+             subject: "SonarQube Report for Build ${env.BUILD_NUMBER}",
+             to: 'tushardeshmukh8117@gmail.com'
+      }
     }
   }
 }
+
