@@ -1,96 +1,106 @@
 pipeline {
-  agent {
-    docker {
-      image 'abhishekf5/maven-abhishek-docker-agent:v1'
-      args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
-    }
-  }
-  stages {
-    stage('Checkout') {
-      steps {
-        sh 'echo passed'
-        //git branch: 'main', url: 'https://github.com/Tushar8117/Jenkins-pipeline'
-      }
-    }
-    stage('Build and Test') {
-      steps {
-        sh 'ls -ltr'
-        sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn clean package'
-      }
-    }
-    stage('Static Code Analysis') {
-      environment {
-        SONAR_URL = "http://3.109.149.111:9000"
-      }
-      steps {
-        withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
-          sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn sonar:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=${SONAR_URL}'
+    agent {
+        docker {
+            image 'abhishekf5/maven-abhishek-docker-agent:v1'
+            args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
         }
-      }
     }
-    stage('Build and Push Docker Image') {
-      environment {
-        DOCKER_IMAGE = "tushar8117/ultimate-cicd:${BUILD_NUMBER}"
-      }
-      steps {
-        script {
-          sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && docker build -t ${DOCKER_IMAGE} .'
-          def dockerImage = docker.image("${DOCKER_IMAGE}")
-          docker.withRegistry('https://index.docker.io/v1/', "docker-cred") {
-            dockerImage.push()
-          }
+    stages {
+        stage('Checkout') {
+            steps {
+                sh 'echo passed'
+                // Uncomment below line to use the actual Git repo
+                // git branch: 'main', url: 'https://github.com/Tushar8117/Jenkins-pipeline'
+            }
         }
-      }
-    }
-    stage('Update Deployment File') {
-      environment {
-        GIT_REPO_NAME = "Jenkins-pipeline"
-        GIT_USER_NAME = "Tushar8117"
-      }
-      steps {
-        withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
-          sh '''
-            git config user.email "tushardeshmukh8117@gmail.com"
-            git config user.name "Tushar8117"
-            sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-            git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-            git commit -m "Update deployment image to version ${BUILD_NUMBER}"
-            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
-          '''
+        stage('Build and Test') {
+            steps {
+                sh 'ls -ltr'
+                sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn clean package'
+            }
         }
-      }
+        stage('Static Code Analysis') {
+            environment {
+                SONAR_URL = "http://3.109.149.111:9000"
+            }
+            steps {
+                withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
+                    sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn sonar:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=${SONAR_URL}'
+                }
+            }
+        }
+        stage('Build and Push Docker Image') {
+            environment {
+                DOCKER_IMAGE = "tushar8117/ultimate-cicd:${BUILD_NUMBER}"
+            }
+            steps {
+                script {
+                    sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && docker build -t ${DOCKER_IMAGE} .'
+                    def dockerImage = docker.image("${DOCKER_IMAGE}")
+                    docker.withRegistry('https://index.docker.io/v1/', "docker-cred") {
+                        dockerImage.push()
+                    }
+                }
+            }
+        }
+        stage('Container Vulnerability Scan') {
+            steps {
+                script {
+                    sh "trivy image tushar8117/ultimate-cicd:${BUILD_NUMBER} > trivy-report.txt"
+                }
+            }
+        }
+        stage('Update Deployment File') {
+            environment {
+                GIT_REPO_NAME = "Jenkins-pipeline"
+                GIT_USER_NAME = "Tushar8117"
+            }
+            steps {
+                withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
+                    sh '''
+                        git config user.email "tushardeshmukh8117@gmail.com"
+                        git config user.name "Tushar8117"
+                        sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+                        git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+                        git commit -m "Update deployment image to version ${BUILD_NUMBER}"
+                        git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+                    '''
+                }
+            }
+        }
     }
-  }
-  post {
-    always {
-      script {
-        // Define SonarQube Project URL
-        def sonarProjectURL = "${env.SONAR_URL}/dashboard?id=your_project_key" // Replace 'your_project_key' with your SonarQube project key
+    post {
+        always {
+            archiveArtifacts artifacts: 'trivy-report.txt', allowEmptyArchive: true
+        }
+        success {
+            script {
+                def sonarProjectURL = "${env.SONAR_URL}/dashboard?id=your_project_key" // Replace 'your_project_key' with your SonarQube project key
 
-        // Define the email content with SonarQube report placeholders
-        def emailBody = """<h2>SonarQube Analysis Report for Build ${env.BUILD_NUMBER}</h2>
-                           <p>The SonarQube analysis for project ${env.JOB_NAME} has been completed. Key metrics:</p>
-                           <ul>
-                               <li><b>Build Number:</b> ${env.BUILD_NUMBER}</li>
-                               <li><b>Quality Gate Status:</b> <b><font color="green">Passed</font></b> or <b><font color="red">Failed</font></b> (Placeholder)</li>
-                               <li><b>Code Coverage:</b> Placeholder %</li>
-                               <li><b>Code Smells:</b> Placeholder count</li>
-                               <li><b>Bugs:</b> Placeholder count</li>
-                               <li><b>Vulnerabilities:</b> Placeholder count</li>
-                           </ul>
-                           <p>For more details, view the <a href="${sonarProjectURL}">full SonarQube report</a>.</p>"""
+                def emailBody = """<h2>Build ${env.BUILD_NUMBER} Reports</h2>
+                                   <p>SonarQube Analysis and Trivy Vulnerability Scan have completed successfully.</p>
+                                   <ul>
+                                       <li>SonarQube Report: <a href="${sonarProjectURL}">View Report</a></li>
+                                       <li>Trivy Report: Attached below</li>
+                                   </ul>"""
 
-        // Send the email with SonarQube report
-        mail bcc: '',
-             body: emailBody,
-             mimeType: 'text/html',
-             cc: '',
-             from: 'tushar937297@gmail.com',
-             replyTo: 'tushardeshmukh8117@gmail.com',
-             subject: "SonarQube Report for Build ${env.BUILD_NUMBER}",
-             to: 'tushardeshmukh8117@gmail.com'
-      }
+                emailext(
+                    subject: "Build ${env.BUILD_NUMBER} Reports",
+                    body: emailBody,
+                    mimeType: 'text/html',
+                    attachmentsPattern: 'trivy-report.txt',
+                    to: 'tushardeshmukh8117@gmail.com'
+                )
+            }
+        }
+        failure {
+            emailext(
+                subject: "Build ${env.BUILD_NUMBER} Failed",
+                body: "Build ${env.BUILD_NUMBER} failed. Please check the Jenkins logs and attached Trivy report.",
+                mimeType: 'text/plain',
+                attachmentsPattern: 'trivy-report.txt',
+                to: 'tushardeshmukh8117@gmail.com'
+            )
+        }
     }
-  }
 }
-
