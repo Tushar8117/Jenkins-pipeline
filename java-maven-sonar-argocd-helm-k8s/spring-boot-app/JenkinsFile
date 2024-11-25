@@ -76,30 +76,25 @@ pipeline {
         success {
             script {
                 def sonarProjectURL = "${env.SONAR_URL}/dashboard?id=spring-boot-demo" // Replace 'your_project_key' with your SonarQube project key
-
-                def emailBody = """<h2>Build ${env.BUILD_NUMBER} Reports</h2>
-                                   <p>SonarQube Analysis and Trivy Vulnerability Scan have completed successfully.</p>
-                                   <ul>
-                                       <li>SonarQube Report: <a href="${sonarProjectURL}">View Report</a></li>
-                                       <li>Trivy Report: Attached below</li>
-                                   </ul>"""
-
-                emailext(
-                    subject: "Build ${env.BUILD_NUMBER} Reports",
-                    body: emailBody,
-                    mimeType: 'text/html',
-                    attachmentsPattern: 'trivy-report.txt',
-                    to: 'tushardeshmukh8117@gmail.com'
+                slackSend(
+                    channel: '#jenkins',
+                    color: 'good',
+                    message: """
+Build #${env.BUILD_NUMBER} - *Success* :white_check_mark:
+> SonarQube Report: <${sonarProjectURL}|View Report>
+> Trivy Report: Artifact is available in Jenkins
+"""
                 )
             }
         }
         failure {
-            emailext(
-                subject: "Build ${env.BUILD_NUMBER} Failed",
-                body: "Build ${env.BUILD_NUMBER} failed. Please check the Jenkins logs and attached Trivy report.",
-                mimeType: 'text/plain',
-                attachmentsPattern: 'trivy-report.txt',
-                to: 'tushardeshmukh8117@gmail.com'
+            slackSend(
+                channel: '#jenkins',
+                color: 'danger',
+                message: """
+Build #${env.BUILD_NUMBER} - *Failed* :x:
+Check the Jenkins logs and Trivy report.
+"""
             )
         }
     }
