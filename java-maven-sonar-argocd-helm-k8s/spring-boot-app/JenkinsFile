@@ -75,14 +75,14 @@ pipeline {
         }
         success {
             script {
-                def sonarProjectURL = "${env.SONAR_URL}/dashboard?id=spring-boot-demo" // Replace with your actual SonarQube project key
+                def sonarProjectURL = "${env.SONAR_URL/dashboard?id=spring-boot-demo" // Replace with your actual SonarQube project key
 
                 slackSend(
                     channel: '#jenkins',
                     color: 'good',
                     message: """
 *Build #${env.BUILD_NUMBER}* - *Success* :white_check_mark:
-- SonarQube Report: <${sonarProjectURL}|View Report>
+- SonarQube Report: <http://13.202.211.212:9000/|View Report>
 - Trivy Report: Artifact is available in Jenkins
 """,
                     tokenCredentialId: 'slack-id' // Replace with your Slack bot token credential ID
