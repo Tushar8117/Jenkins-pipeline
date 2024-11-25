@@ -8,7 +8,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                sh 'echo passed'
+                echo 'Checking out the repository...'
                 // Uncomment below line to use the actual Git repo
                 // git branch: 'main', url: 'https://github.com/Tushar8117/Jenkins-pipeline'
             }
@@ -75,15 +75,17 @@ pipeline {
         }
         success {
             script {
-                def sonarProjectURL = "${env.SONAR_URL}/dashboard?id=spring-boot-demo" // Replace 'your_project_key' with your SonarQube project key
+                def sonarProjectURL = "${env.SONAR_URL}/dashboard?id=spring-boot-demo" // Replace with your actual SonarQube project key
+
                 slackSend(
                     channel: '#jenkins',
                     color: 'good',
                     message: """
-Build #${env.BUILD_NUMBER} - *Success* :white_check_mark:
-> SonarQube Report: <${sonarProjectURL}|View Report>
-> Trivy Report: Artifact is available in Jenkins
-"""
+*Build #${env.BUILD_NUMBER}* - *Success* :white_check_mark:
+- SonarQube Report: <${sonarProjectURL}|View Report>
+- Trivy Report: Artifact is available in Jenkins
+""",
+                    tokenCredentialId: 'slack-token-id' // Replace with your Slack bot token credential ID
                 )
             }
         }
@@ -92,9 +94,11 @@ Build #${env.BUILD_NUMBER} - *Success* :white_check_mark:
                 channel: '#jenkins',
                 color: 'danger',
                 message: """
-Build #${env.BUILD_NUMBER} - *Failed* :x:
-Check the Jenkins logs and Trivy report.
-"""
+*Build #${env.BUILD_NUMBER}* - *Failed* :x:
+- Please check Jenkins logs for details.
+- Check Trivy report in attached artifact.
+""",
+                tokenCredentialId: 'slack-id' // Replace with your Slack bot token credential ID
             )
         }
     }
