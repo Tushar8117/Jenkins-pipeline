@@ -75,7 +75,7 @@ pipeline {
         }
         success {
             script {
-                def sonarProjectURL = "${env.SONAR_URL}/dashboard?id=your_project_key" // Replace 'your_project_key' with your SonarQube project key
+                def sonarProjectURL = "${env.SONAR_URL}/dashboard?id=spring-boot-demo" // Replace 'your_project_key' with your SonarQube project key
 
                 def emailBody = """<h2>Build ${env.BUILD_NUMBER} Reports</h2>
                                    <p>SonarQube Analysis and Trivy Vulnerability Scan have completed successfully.</p>
