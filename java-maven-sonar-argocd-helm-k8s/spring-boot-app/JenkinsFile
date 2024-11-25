@@ -85,7 +85,7 @@ pipeline {
 - SonarQube Report: <${sonarProjectURL}|View Report>
 - Trivy Report: Artifact is available in Jenkins
 """,
-                    tokenCredentialId: 'slack-token-id' // Replace with your Slack bot token credential ID
+                    tokenCredentialId: 'slack-id' // Replace with your Slack bot token credential ID
                 )
             }
         }
