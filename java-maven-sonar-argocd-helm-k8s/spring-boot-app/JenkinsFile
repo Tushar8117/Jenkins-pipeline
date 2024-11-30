@@ -75,7 +75,7 @@ pipeline {
         }
         success {
             script {
-                def sonarProjectURL = "${http://13.202.211.212:9000/projects?id=com.abhishek:spring-boot-demo" // Replace with your actual SonarQube project key
+                def sonarProjectURL = '''${http://13.202.211.212:9000/projects?id=com.abhishek:spring-boot-demo''' // Replace with your actual SonarQube project key
 
                 slackSend(
                     channel: '#jenkins',
